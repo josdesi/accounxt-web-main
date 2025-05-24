@@ -1,1 +1,2 @@
 - 1.0.0 Bootstraping
+- 1.0.1 S3 deployment
