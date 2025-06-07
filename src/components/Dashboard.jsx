@@ -28,6 +28,21 @@ export default function Dashboard({ onLogout }) {
     setSidebarOpen(!sidebarOpen);
   };
 
+  const handleApiCall = async () => {
+    try {
+      const response = await fetch('http://localhost:8090/', {
+        method: 'GET',
+        headers: {
+          'accept': 'application/json'
+        }
+      });
+      const data = await response.json();
+      console.log('API response:', data);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  };
+
   const menuItems = [
     { text: 'Home', icon: <HomeIcon /> },
     { text: 'Profile', icon: <PersonIcon /> },
@@ -89,6 +104,13 @@ export default function Dashboard({ onLogout }) {
         <Typography paragraph>
           Welcome to Dashboard
         </Typography>
+        <Button 
+          variant="contained" 
+          onClick={handleApiCall}
+          sx={{ mt: 2 }}
+        >
+          Call API
+        </Button>
       </Box>
     </Box>
   );
