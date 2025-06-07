@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { 
   Box,
@@ -8,13 +7,40 @@ import {
   Typography
 } from '@mui/material';
 
-export default function Login({ onLogin }) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+export default function Login() {
+  const [formData, setFormData] = useState({
+    username: '',
+    password: ''
+  });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onLogin(username, password);
+    try {
+      const response = await fetch('http://localhost:8090/login', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      });
+
+      if (response.status === 200) {
+        window.location.href = '/dashboard';
+      } else {
+        console.error('Login failed:', await response.json());
+      }
+    } catch (error) {
+      console.error('Error during login:', error);
+    }
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   return (
@@ -28,42 +54,43 @@ export default function Login({ onLogin }) {
       }}
     >
       <Paper
-        component="form"
-        onSubmit={handleSubmit}
         elevation={3}
         sx={{
           p: 4,
           width: '100%',
-          maxWidth: 400,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 2
+          maxWidth: 400
         }}
       >
-        <Typography variant="h5" component="h1" textAlign="center">
+        <Typography variant="h5" component="h1" textAlign="center" mb={3}>
           Login
         </Typography>
-        <TextField
-          fullWidth
-          label="Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
-        <TextField
-          fullWidth
-          type="password"
-          label="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <Button
-          type="submit"
-          variant="contained"
-          fullWidth
-          size="large"
-        >
-          Login
-        </Button>
+        <form onSubmit={handleSubmit}>
+          <TextField
+            fullWidth
+            name="username"
+            label="Username"
+            value={formData.username}
+            onChange={handleChange}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            fullWidth
+            name="password"
+            type="password"
+            label="Password"
+            value={formData.password}
+            onChange={handleChange}
+            sx={{ mb: 2 }}
+          />
+          <Button
+            type="submit"
+            variant="contained"
+            fullWidth
+            size="large"
+          >
+            Login
+          </Button>
+        </form>
       </Paper>
     </Box>
   );
