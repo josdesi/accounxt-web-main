@@ -62,7 +62,7 @@ export default function Login() {
         }}
       >
         <Typography variant="h5" component="h1" textAlign="center" mb={3}>
-          Login
+          Login ...
         </Typography>
         <form onSubmit={handleSubmit}>
           <TextField
