@@ -14,5 +14,6 @@ serve dist
 
 ```
 npm install @reduxjs/toolkit react-redux
+npm install react-router-dom
 
 ```

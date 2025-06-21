@@ -1,38 +1,48 @@
+import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
+import { logout } from './store/slices/authSlice';
 
-import { useState } from 'react'
-import { CssBaseline, ThemeProvider, createTheme } from '@mui/material'
-import Login from './components/Login'
-import Dashboard from './components/Dashboard'
+import Login from './components/Login';
+import Dashboard from './components/Dashboard';
 
 const theme = createTheme({
   palette: {
     mode: 'light'
   }
-})
+});
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-
-  const handleLogin = (username, password) => {
-    if (username === 'admin' && password === 'admin') {
-      setIsAuthenticated(true)
-    } else {
-      alert('Invalid credentials')
-    }
-  }
+  const dispatch = useDispatch();
+  const token = useSelector((state) => state.auth.token);
 
   const handleLogout = () => {
-    setIsAuthenticated(false)
-  }
+    dispatch(logout());
+  };
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      {!isAuthenticated ? (
-        <Login onLogin={handleLogin} />
-      ) : (
-        <Dashboard onLogout={handleLogout} />
-      )}
+      <BrowserRouter>
+        <Routes>
+          <Route
+            path="/"
+            element={
+              token
+                ? <Navigate to="/dashboard" />
+                : <Login />
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              token
+                ? <Dashboard onLogout={handleLogout} />
+                : <Navigate to="/" />
+            }
+          />
+        </Routes>
+      </BrowserRouter>
     </ThemeProvider>
-  )
+  );
 }

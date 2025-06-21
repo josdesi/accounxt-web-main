@@ -1,70 +1,38 @@
 import { useState } from 'react';
-import { 
-  Box,
-  Paper,
-  TextField,
-  Button,
-  Typography
-} from '@mui/material';
-const apiUrl = import.meta.env.VITE_API_URL;
-
+import { useDispatch, useSelector } from 'react-redux';
+import { Box, Paper, TextField, Button, Typography } from '@mui/material';
+import { login } from '../store/slices/authSlice';
+import { useNavigate } from 'react-router-dom';
 
 export default function Login() {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { loading, error, token } = useSelector((state) => state.auth);
+
   const [formData, setFormData] = useState({
     username: '',
     password: ''
   });
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    try {
-      const response = await fetch('http://localhost:8090/login', {
-        method: 'POST',
-        headers: {
-          'accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      });
-
-      if (response.status === 200) {
-        window.location.href = '/dashboard';
-      } else {
-        console.error('Login failed:', await response.json());
+    dispatch(login(formData)).then((result) => {
+      if (result.meta.requestStatus === 'fulfilled') {
+        navigate('/dashboard');
       }
-    } catch (error) {
-      console.error('Error during login:', error);
-    }
+    });
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   return (
-    <Box
-      sx={{
-        height: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        bgcolor: 'background.default'
-      }}
-    >
-      <Paper
-        elevation={3}
-        sx={{
-          p: 4,
-          width: '100%',
-          maxWidth: 400
-        }}
-      >
-        <Typography variant="h5" component="h1" textAlign="center" mb={3}>
-        Login {apiUrl}
+    <Box sx={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Paper elevation={3} sx={{ p: 4, width: '100%', maxWidth: 400 }}>
+        <Typography variant="h5" textAlign="center" mb={3}>
+          Login
         </Typography>
         <form onSubmit={handleSubmit}>
           <TextField
@@ -84,13 +52,9 @@ export default function Login() {
             onChange={handleChange}
             sx={{ mb: 2 }}
           />
-          <Button
-            type="submit"
-            variant="contained"
-            fullWidth
-            size="large"
-          >
-            Login
+          {error && <Typography color="error" mb={2}>{error}</Typography>}
+          <Button type="submit" variant="contained" fullWidth size="large" disabled={loading}>
+            {loading ? 'Logging in...' : 'Login'}
           </Button>
         </form>
       </Paper>
