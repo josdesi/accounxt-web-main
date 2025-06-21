@@ -6,6 +6,8 @@ import {
   Button,
   Typography
 } from '@mui/material';
+const apiUrl = import.meta.env.VITE_API_URL;
+
 
 export default function Login() {
   const [formData, setFormData] = useState({
@@ -62,7 +64,7 @@ export default function Login() {
         }}
       >
         <Typography variant="h5" component="h1" textAlign="center" mb={3}>
-          Login ...
+        Login {apiUrl}
         </Typography>
         <form onSubmit={handleSubmit}>
           <TextField
