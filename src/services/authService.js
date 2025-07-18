@@ -17,7 +17,7 @@ const authService = {
     }
 
     const data = await response.json();
-    return data.refreshToken;
+    return data.AuthenticationResult.AccessToken;
   }
 };
 
