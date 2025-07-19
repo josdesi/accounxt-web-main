@@ -9,41 +9,61 @@ import {
   List,
   ListItem,
   ListItemIcon,
-  ListItemText
+  ListItemText,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import HomeIcon from '@mui/icons-material/Home';
 import PersonIcon from '@mui/icons-material/Person';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
+import GroupIcon from '@mui/icons-material/Group';
+
+import Home from '../views/Home';
+import Profile from '../views/Profile';
+import Settings from '../views/Settings';
+import Users from '../views/Users';
 
 const drawerWidth = 240;
 
 export default function Dashboard({ onLogout }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [selectedMenu, setSelectedMenu] = useState('Home');
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
 
   const toggleDrawer = () => {
     setSidebarOpen(!sidebarOpen);
   };
 
+  const handleLogoutClick = () => {
+    setLogoutDialogOpen(true);
+  };
+
+  const handleLogoutConfirm = () => {
+    setLogoutDialogOpen(false);
+    onLogout();
+  };
+
+  const handleLogoutCancel = () => {
+    setLogoutDialogOpen(false);
+  };
+
   const menuItems = [
     { text: 'Home', icon: <HomeIcon /> },
+    { text: 'Users', icon: <GroupIcon /> },
     { text: 'Profile', icon: <PersonIcon /> },
     { text: 'Settings', icon: <SettingsIcon /> }
   ];
 
-  const renderContent = () => {
-    switch (selectedMenu) {
-      case 'Home':
-        return <Typography paragraph>Welcome to the Home section!</Typography>;
-      case 'Profile':
-        return <Typography paragraph>This is your Profile page.</Typography>;
-      case 'Settings':
-        return <Typography paragraph>Settings can be configured here.</Typography>;
-      default:
-        return <Typography paragraph>Select an option from the menu.</Typography>;
-    }
+  const views = {
+    Home: <Home />,
+    Users: <Users />,
+    Profile: <Profile />,
+    Settings: <Settings />
   };
 
   return (
@@ -93,7 +113,7 @@ export default function Dashboard({ onLogout }) {
                 <ListItemText primary={item.text} sx={{ opacity: sidebarOpen ? 1 : 0 }} />
               </ListItem>
             ))}
-            <ListItem button onClick={onLogout}>
+            <ListItem button onClick={handleLogoutClick}>
               <ListItemIcon><LogoutIcon /></ListItemIcon>
               <ListItemText primary="Logout" sx={{ opacity: sidebarOpen ? 1 : 0 }} />
             </ListItem>
@@ -103,8 +123,21 @@ export default function Dashboard({ onLogout }) {
 
       <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
         <Toolbar />
-        {renderContent()}
+        {views[selectedMenu] || <Typography paragraph>Select an option from the menu.</Typography>}
       </Box>
+
+      <Dialog open={logoutDialogOpen} onClose={handleLogoutCancel}>
+        <DialogTitle>Confirm Logout</DialogTitle>
+        <DialogContent>
+          <Typography>Are you sure you want to log out?</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleLogoutCancel}>Cancel</Button>
+          <Button onClick={handleLogoutConfirm} color="primary" variant="contained">
+            Confirm
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
