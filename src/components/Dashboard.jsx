@@ -22,11 +22,13 @@ import PersonIcon from '@mui/icons-material/Person';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import GroupIcon from '@mui/icons-material/Group';
+import SecurityIcon from '@mui/icons-material/Security';
 
 import Home from '../views/Home';
 import Profile from '../views/Profile';
 import Settings from '../views/Settings';
 import Users from '../views/Users';
+import Roles from '../views/Roles';
 
 const drawerWidth = 240;
 
@@ -55,6 +57,7 @@ export default function Dashboard({ onLogout }) {
   const menuItems = [
     { text: 'Home', icon: <HomeIcon /> },
     { text: 'Users', icon: <GroupIcon /> },
+    { text: 'Roles', icon: <SecurityIcon /> },
     { text: 'Profile', icon: <PersonIcon /> },
     { text: 'Settings', icon: <SettingsIcon /> }
   ];
@@ -62,6 +65,7 @@ export default function Dashboard({ onLogout }) {
   const views = {
     Home: <Home />,
     Users: <Users />,
+    Roles: <Roles />,
     Profile: <Profile />,
     Settings: <Settings />
   };
