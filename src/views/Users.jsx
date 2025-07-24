@@ -4,7 +4,16 @@ import {
   Box,
   Card,
   Button,
-  Chip
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material';
 
 import { DataGrid } from '@mui/x-data-grid';
@@ -15,11 +24,47 @@ import NewReleasesIcon from '@mui/icons-material/NewReleases';
 
 export default function Users() {
   const [users] = useState([
-    { id: 'USR001', name: 'Alice Johnson', email: 'alice.j@example.com', phone: '555-1234', role: 'Admin', status: 'Active' },
-    { id: 'USR002', name: 'Bob Smith', email: 'bob.s@example.com', phone: '555-5678', role: 'Viewer', status: 'Active' },
-    { id: 'USR003', name: 'Charlie Brown', email: 'charlie.b@example.com', phone: '555-9012', role: 'Viewer', status: 'Inactive' },
+    { id: 'USR001', name: 'Alice Johnson', username: 'alice.j', email: 'alice.j@example.com', phone: '555-1234', role: 'Admin', status: 'Active' },
+    { id: 'USR002', name: 'Bob Smith', username: 'bob.s', email: 'bob.s@example.com', phone: '555-5678', role: 'Viewer', status: 'Active' },
+    { id: 'USR003', name: 'Charlie Brown', username: 'charlie.b', email: 'charlie.b@example.com', phone: '555-9012', role: 'Viewer', status: 'Inactive' },
     // ... more users
   ]);
+  const [openModal, setOpenModal] = useState(false);
+  const [newUser, setNewUser] = useState({
+    name: '',
+    username: '',
+    email: '',
+    phone: '',
+    role: 'Viewer',
+    status: 'Active'
+  });
+
+  const handleOpenModal = () => setOpenModal(true);
+  const handleCloseModal = () => {
+    setOpenModal(false);
+    setNewUser({
+      name: '',
+      username: '',
+      email: '',
+      phone: '',
+      role: 'Viewer',
+      status: 'Active'
+    });
+  };
+
+  const handleInputChange = (event) => {
+    const { name, value } = event.target;
+    setNewUser(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = () => {
+    // Aquí iría la lógica para guardar el nuevo usuario
+    console.log('Nuevo usuario:', newUser);
+    handleCloseModal();
+  };
 
   const stats = [
     { title: 'Total Users', value: 10, icon: <GroupIcon />, color: '#1976d2' },
@@ -31,6 +76,7 @@ export default function Users() {
   const columns = [
     { field: 'id', headerName: 'ID', width: 90 },
     { field: 'name', headerName: 'Name', width: 180 },
+    { field: 'username', headerName: 'Username', width: 130 },
     { field: 'email', headerName: 'Email', width: 200 },
     { field: 'phone', headerName: 'Phone', width: 130 },
     {
@@ -90,7 +136,7 @@ export default function Users() {
         <Box>
           <Button variant="outlined" sx={{ mr: 1 }}>Filter</Button>
           <Button variant="outlined" sx={{ mr: 1 }}>Export</Button>
-          <Button variant="contained">+ Add User</Button>
+          <Button variant="contained" onClick={handleOpenModal}>+ Add User</Button>
         </Box>
       </Box>
 
@@ -104,6 +150,77 @@ export default function Users() {
           disableSelectionOnClick
         />
       </Box>
+
+      <Dialog 
+        open={openModal} 
+        onClose={handleCloseModal}
+        PaperProps={{
+          sx: { width: '500px' }
+        }}
+      >
+        <DialogTitle>Add New User</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              name="name"
+              label="Name"
+              fullWidth
+              value={newUser.name}
+              onChange={handleInputChange}
+            />
+            <TextField
+              name="username"
+              label="Username"
+              fullWidth
+              value={newUser.username}
+              onChange={handleInputChange}
+            />
+            <TextField
+              name="email"
+              label="Email"
+              type="email"
+              fullWidth
+              value={newUser.email}
+              onChange={handleInputChange}
+            />
+            <TextField
+              name="phone"
+              label="Phone"
+              fullWidth
+              value={newUser.phone}
+              onChange={handleInputChange}
+            />
+            <FormControl fullWidth>
+              <InputLabel>Role</InputLabel>
+              <Select
+                name="role"
+                value={newUser.role}
+                label="Role"
+                onChange={handleInputChange}
+              >
+                <MenuItem value="Admin">Admin</MenuItem>
+                <MenuItem value="Viewer">Viewer</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl fullWidth>
+              <InputLabel>Status</InputLabel>
+              <Select
+                name="status"
+                value={newUser.status}
+                label="Status"
+                onChange={handleInputChange}
+              >
+                <MenuItem value="Active">Active</MenuItem>
+                <MenuItem value="Inactive">Inactive</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseModal}>Cancel</Button>
+          <Button onClick={handleSubmit} variant="contained">Save</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
