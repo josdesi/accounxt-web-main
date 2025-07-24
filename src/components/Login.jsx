@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Box, Paper, TextField, Button, Typography } from '@mui/material';
 import { login } from '../store/slices/authSlice';
 import { useNavigate } from 'react-router-dom';
+import { encryptWithPublicKey } from '../utils/encryption';
 
 export default function Login() {
   const dispatch = useDispatch();
@@ -14,13 +15,24 @@ export default function Login() {
     password: ''
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    dispatch(login(formData)).then((result) => {
-      if (result.meta.requestStatus === 'fulfilled') {
-        navigate('/dashboard');
-      }
-    });
+
+    try {
+      const encryptedPassword = await encryptWithPublicKey(formData.password);
+      const encryptedFormData = {
+        username: formData.username,
+        password: encryptedPassword
+      };
+
+      dispatch(login(encryptedFormData)).then((result) => {
+        if (result.meta.requestStatus === 'fulfilled') {
+          navigate('/dashboard');
+        }
+      });
+    } catch (err) {
+      console.error('Encryption failed:', err);
+    }
   };
 
   const handleChange = (e) => {
