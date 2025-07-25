@@ -21,6 +21,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import GroupIcon from '@mui/icons-material/Group';
 import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
 import NewReleasesIcon from '@mui/icons-material/NewReleases';
+import UserService from '../services/UserService';
 
 export default function Users() {
   const [users] = useState([
@@ -30,12 +31,14 @@ export default function Users() {
     // ... more users
   ]);
   const [openModal, setOpenModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [newUser, setNewUser] = useState({
     name: '',
     username: '',
     email: '',
     phone: '',
-    role: 'Viewer',
+    password: '',
+    role_id: 2,
     status: 'Active'
   });
 
@@ -43,11 +46,12 @@ export default function Users() {
   const handleCloseModal = () => {
     setOpenModal(false);
     setNewUser({
-      name: '',
-      username: '',
-      email: '',
-      phone: '',
-      role: 'Viewer',
+      name: 'Bruce Wayne',
+      username: 'batman',
+      email: 'bruce.wayne@wayne-enterprises.com',
+      phone: '555-3945-2645',
+      password: 'IAmBatman123!',
+      role_id: 1,
       status: 'Active'
     });
   };
@@ -60,10 +64,16 @@ export default function Users() {
     }));
   };
 
-  const handleSubmit = () => {
-    // Aquí iría la lógica para guardar el nuevo usuario
-    console.log('Nuevo usuario:', newUser);
-    handleCloseModal();
+  const handleSubmit = async () => {
+    setIsSaving(true);
+    try {
+      await UserService.create(newUser);
+      handleCloseModal();
+    } catch (error) {
+      console.error('Error al crear usuario:', error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const stats = [
@@ -176,6 +186,14 @@ export default function Users() {
               onChange={handleInputChange}
             />
             <TextField
+              name="password"
+              label="Password"
+              type="password"
+              fullWidth
+              value={newUser.password}
+              onChange={handleInputChange}
+            />
+            <TextField
               name="email"
               label="Email"
               type="email"
@@ -193,13 +211,13 @@ export default function Users() {
             <FormControl fullWidth>
               <InputLabel>Role</InputLabel>
               <Select
-                name="role"
-                value={newUser.role}
+                name="role_id"
+                value={newUser.role_id}
                 label="Role"
                 onChange={handleInputChange}
               >
-                <MenuItem value="Admin">Admin</MenuItem>
-                <MenuItem value="Viewer">Viewer</MenuItem>
+                <MenuItem value={1}>Admin</MenuItem>
+                <MenuItem value={2}>Viewer</MenuItem>
               </Select>
             </FormControl>
             <FormControl fullWidth>
@@ -217,8 +235,14 @@ export default function Users() {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseModal}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained">Save</Button>
+          <Button onClick={handleCloseModal} disabled={isSaving}>Cancel</Button>
+          <Button 
+            onClick={handleSubmit} 
+            variant="contained"
+            disabled={isSaving}
+          >
+            {isSaving ? 'Saving...' : 'Save'}
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

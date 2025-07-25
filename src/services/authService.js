@@ -2,7 +2,7 @@ import { API_BASE_URL } from '../configs/AppConfig';
 
 const authService = {
   login: async ({ username, password }) => {
-    const response = await fetch(`${API_BASE_URL}/login`, {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: {
         'accept': 'application/json',

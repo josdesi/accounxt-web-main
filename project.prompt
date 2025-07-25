@@ -3,17 +3,30 @@ src/
     App.css
     App.jsx
     index.jsx
+    auth/
+        FetchInterceptor.js
     components/
         Dashboard.jsx
         Login.jsx
     configs/
         AppConfig.js
+    constants/
+        AuthConstant.js
     services/
         authService.js
+        UserService.js
     store/
         index.js
         slices/
             authSlice.js
+    utils/
+        encryption.js
+    views/
+        Home.jsx
+        Profile.jsx
+        Roles.jsx
+        Settings.jsx
+        Users.jsx
 
 // src\App.css
 /* MUI handles all the styling */
@@ -74,7 +87,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { Provider } from 'react-redux';
-import { store } from './store';
+import store from './store';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <Provider store={store}>
@@ -82,6 +95,48 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </Provider>
 );
 
+
+// src\auth\FetchInterceptor.js
+import axios from 'axios';
+import { API_BASE_URL } from 'configs/AppConfig';
+import { signOutSuccess } from 'store/slices/authSlice';
+import store from '../store';
+import { AUTH_TOKEN, TOKEN_PAYLOAD_KEY, REQUEST_TIMEOUT } from 'constants/AuthConstant';
+
+const unauthorizedCode = [400, 401, 403]
+
+const service = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: REQUEST_TIMEOUT
+})
+
+
+service.interceptors.request.use(config => {
+	const jwtToken = localStorage.getItem(AUTH_TOKEN) || null;
+	
+	if (jwtToken) {
+		config.headers[TOKEN_PAYLOAD_KEY] = jwtToken
+	}
+
+  	return config
+}, error => {
+	return Promise.reject(error)
+})
+
+
+service.interceptors.response.use((response) => {
+	return response.data
+}, (error) => {
+
+	if (unauthorizedCode.includes(error.response.status)) {
+		localStorage.removeItem(AUTH_TOKEN)
+		store.dispatch(signOutSuccess())
+	}
+
+	return Promise.reject(error);
+});
+
+export default service
 
 // src\components\Dashboard.jsx
 import { useState } from 'react';
@@ -95,41 +150,65 @@ import {
   List,
   ListItem,
   ListItemIcon,
-  ListItemText
+  ListItemText,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import HomeIcon from '@mui/icons-material/Home';
 import PersonIcon from '@mui/icons-material/Person';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
+import GroupIcon from '@mui/icons-material/Group';
+import SecurityIcon from '@mui/icons-material/Security';
+
+import Home from '../views/Home';
+import Profile from '../views/Profile';
+import Settings from '../views/Settings';
+import Users from '../views/Users';
+import Roles from '../views/Roles';
 
 const drawerWidth = 240;
 
 export default function Dashboard({ onLogout }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [selectedMenu, setSelectedMenu] = useState('Home');
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
 
   const toggleDrawer = () => {
     setSidebarOpen(!sidebarOpen);
   };
 
+  const handleLogoutClick = () => {
+    setLogoutDialogOpen(true);
+  };
+
+  const handleLogoutConfirm = () => {
+    setLogoutDialogOpen(false);
+    onLogout();
+  };
+
+  const handleLogoutCancel = () => {
+    setLogoutDialogOpen(false);
+  };
+
   const menuItems = [
     { text: 'Home', icon: <HomeIcon /> },
+    { text: 'Users', icon: <GroupIcon /> },
+    { text: 'Roles', icon: <SecurityIcon /> },
     { text: 'Profile', icon: <PersonIcon /> },
     { text: 'Settings', icon: <SettingsIcon /> }
   ];
 
-  const renderContent = () => {
-    switch (selectedMenu) {
-      case 'Home':
-        return <Typography paragraph>Welcome to the Home section!</Typography>;
-      case 'Profile':
-        return <Typography paragraph>This is your Profile page.</Typography>;
-      case 'Settings':
-        return <Typography paragraph>Settings can be configured here.</Typography>;
-      default:
-        return <Typography paragraph>Select an option from the menu.</Typography>;
-    }
+  const views = {
+    Home: <Home />,
+    Users: <Users />,
+    Roles: <Roles />,
+    Profile: <Profile />,
+    Settings: <Settings />
   };
 
   return (
@@ -179,7 +258,7 @@ export default function Dashboard({ onLogout }) {
                 <ListItemText primary={item.text} sx={{ opacity: sidebarOpen ? 1 : 0 }} />
               </ListItem>
             ))}
-            <ListItem button onClick={onLogout}>
+            <ListItem button onClick={handleLogoutClick}>
               <ListItemIcon><LogoutIcon /></ListItemIcon>
               <ListItemText primary="Logout" sx={{ opacity: sidebarOpen ? 1 : 0 }} />
             </ListItem>
@@ -189,8 +268,21 @@ export default function Dashboard({ onLogout }) {
 
       <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
         <Toolbar />
-        {renderContent()}
+        {views[selectedMenu] || <Typography paragraph>Select an option from the menu.</Typography>}
       </Box>
+
+      <Dialog open={logoutDialogOpen} onClose={handleLogoutCancel}>
+        <DialogTitle>Confirm Logout</DialogTitle>
+        <DialogContent>
+          <Typography>Are you sure you want to log out?</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleLogoutCancel}>Cancel</Button>
+          <Button onClick={handleLogoutConfirm} color="primary" variant="contained">
+            Confirm
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
@@ -202,6 +294,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Box, Paper, TextField, Button, Typography } from '@mui/material';
 import { login } from '../store/slices/authSlice';
 import { useNavigate } from 'react-router-dom';
+import { encryptWithPublicKey } from '../utils/encryption';
 
 export default function Login() {
   const dispatch = useDispatch();
@@ -213,13 +306,24 @@ export default function Login() {
     password: ''
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    dispatch(login(formData)).then((result) => {
-      if (result.meta.requestStatus === 'fulfilled') {
-        navigate('/dashboard');
-      }
-    });
+
+    try {
+      const encryptedPassword = await encryptWithPublicKey(formData.password);
+      const encryptedFormData = {
+        username: formData.username,
+        password: encryptedPassword
+      };
+
+      dispatch(login(encryptedFormData)).then((result) => {
+        if (result.meta.requestStatus === 'fulfilled') {
+          navigate('/dashboard');
+        }
+      });
+    } catch (err) {
+      console.error('Encryption failed:', err);
+    }
   };
 
   const handleChange = (e) => {
@@ -263,6 +367,13 @@ export default function Login() {
 
 // src\configs\AppConfig.js
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+export const PUBLIC_KEY_BASE64 = import.meta.env.VITE_PUBLIC_KEY_BASE64;
+
+
+// src\constants\AuthConstant.js
+export const AUTH_TOKEN = 'auth_token'
+export const TOKEN_PAYLOAD_KEY = 'authorization'
+export const REQUEST_TIMEOUT = 60000
 
 // src\services\authService.js
 import { API_BASE_URL } from '../configs/AppConfig';
@@ -291,15 +402,32 @@ const authService = {
 export default authService;
 
 
+// src\services\UserService.js
+import fetch from '../auth/FetchInterceptor';
+
+const UserService = {}
+
+UserService.create = function (data) {
+	return fetch({
+		url: '/user',
+		method: 'post',
+		data: data
+	})
+}
+
+export default UserService;
+
 // src\store\index.js
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './slices/authSlice';
 
-export const store = configureStore({
+const store = configureStore({
   reducer: {
     auth: authReducer
   }
 });
+
+export default store;
 
 
 // src\store\slices\authSlice.js
@@ -352,4 +480,393 @@ const authSlice = createSlice({
 
 export const { logout } = authSlice.actions;
 export default authSlice.reducer;
+
+// src\utils\encryption.js
+import { PUBLIC_KEY_BASE64 } from '../configs/AppConfig';
+
+export async function encryptWithPublicKey(message) {
+  const binaryDer = Uint8Array.from(atob(PUBLIC_KEY_BASE64), c => c.charCodeAt(0));
+
+  const publicKey = await window.crypto.subtle.importKey(
+    "spki",
+    binaryDer.buffer,
+    {
+      name: "RSA-OAEP",
+      hash: "SHA-256"
+    },
+    false,
+    ["encrypt"]
+  );
+
+  const encoded = new TextEncoder().encode(message);
+  const ciphertext = await window.crypto.subtle.encrypt({ name: "RSA-OAEP" }, publicKey, encoded);
+  return btoa(String.fromCharCode(...new Uint8Array(ciphertext)));
+}
+
+
+// src\views\Home.jsx
+import { Typography } from '@mui/material';
+
+export default function Home() {
+  return <Typography paragraph>Welcome to the Home section!</Typography>;
+}
+
+
+// src\views\Profile.jsx
+import { Typography } from '@mui/material';
+
+export default function Profile() {
+  return <Typography paragraph>This is your Profile page.</Typography>;
+}
+
+
+// src\views\Roles.jsx
+import { useState } from 'react';
+import {
+  Box,
+  Typography,
+  Button,
+  IconButton,
+} from '@mui/material';
+import { DataGrid } from '@mui/x-data-grid';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import SortIcon from '@mui/icons-material/Sort';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+
+export default function Roles() {
+  const [roles] = useState([
+    { id: 1, name: 'Global Administrator', description: 'Total system access and configuration.' },
+    { id: 2, name: 'Content Manager', description: 'Manages content creation and publishing.' },
+    { id: 3, name: 'News Editor', description: 'Edits and publishes articles in the news section.' },
+    { id: 4, name: 'Data Analyst', description: 'Accesses reports and performance metrics.' },
+    { id: 5, name: 'Technical Support', description: 'Resolves incidents and assists users.' },
+    { id: 6, name: 'Security Reviewer', description: 'Audits and ensures system integrity.' },
+    { id: 7, name: 'Backend Developer', description: 'Manages server logic and database.' },
+    { id: 8, name: 'UI/UX Designer', description: 'Designs interfaces and user experience.' },
+  ]);
+
+  const columns = [
+    { 
+      field: 'name', 
+      headerName: 'Role Name',
+      flex: 1,
+      minWidth: 200 
+    },
+    { 
+      field: 'description', 
+      headerName: 'Description',
+      flex: 2,
+      minWidth: 300
+    },
+    {
+      field: 'actions',
+      headerName: 'Actions',
+      width: 100,
+      sortable: false,
+      renderCell: () => (
+        <IconButton size="small">
+          <MoreVertIcon />
+        </IconButton>
+      ),
+    },
+  ];
+
+  return (
+    <Box>
+      <Typography variant="h5" gutterBottom>Role Management</Typography>
+      
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+        <Button
+          startIcon={<FilterListIcon />}
+          variant="outlined"
+          sx={{ mr: 1 }}
+        >
+          Filter
+        </Button>
+        <Button
+          startIcon={<SortIcon />}
+          variant="outlined"
+          sx={{ mr: 1 }}
+        >
+          Sort
+        </Button>
+        <Button
+          variant="contained"
+          color="primary"
+        >
+          + Add Role
+        </Button>
+      </Box>
+
+      <DataGrid
+        rows={roles}
+        columns={columns}
+        pageSize={8}
+        rowsPerPageOptions={[8, 16, 24]}
+        checkboxSelection
+        disableSelectionOnClick
+        autoHeight
+        sx={{
+          '& .MuiDataGrid-cell': {
+            borderBottom: '1px solid #f0f0f0'
+          },
+          '& .MuiDataGrid-columnHeaders': {
+            backgroundColor: '#fafafa'
+          }
+        }}
+      />
+    </Box>
+  );
+}
+
+// src\views\Settings.jsx
+import { Typography } from '@mui/material';
+
+export default function Settings() {
+  return <Typography paragraph>Settings can be configured here.</Typography>;
+}
+
+
+// src\views\Users.jsx
+import { useState } from 'react';
+import {
+  Typography,
+  Box,
+  Card,
+  Button,
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
+} from '@mui/material';
+
+import { DataGrid } from '@mui/x-data-grid';
+import PersonIcon from '@mui/icons-material/Person';
+import GroupIcon from '@mui/icons-material/Group';
+import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
+import NewReleasesIcon from '@mui/icons-material/NewReleases';
+import UserService from '../services/UserService';
+
+export default function Users() {
+  const [users] = useState([
+    { id: 'USR001', name: 'Alice Johnson', username: 'alice.j', email: 'alice.j@example.com', phone: '555-1234', role: 'Admin', status: 'Active' },
+    { id: 'USR002', name: 'Bob Smith', username: 'bob.s', email: 'bob.s@example.com', phone: '555-5678', role: 'Viewer', status: 'Active' },
+    { id: 'USR003', name: 'Charlie Brown', username: 'charlie.b', email: 'charlie.b@example.com', phone: '555-9012', role: 'Viewer', status: 'Inactive' },
+    // ... more users
+  ]);
+  const [openModal, setOpenModal] = useState(false);
+  const [newUser, setNewUser] = useState({
+    name: '',
+    username: '',
+    email: '',
+    phone: '',
+    password: '',
+    role: 'Viewer',
+    status: 'Active'
+  });
+
+  const handleOpenModal = () => setOpenModal(true);
+  const handleCloseModal = () => {
+    setOpenModal(false);
+    setNewUser({
+      name: '',
+      username: '',
+      email: '',
+      phone: '',
+      password: '',
+      role: 'Viewer',
+      status: 'Active'
+    });
+  };
+
+  const handleInputChange = (event) => {
+    const { name, value } = event.target;
+    setNewUser(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = async () => {
+    try {
+      await UserService.create(newUser);
+      handleCloseModal();
+    } catch (error) {
+      console.error('Error al crear usuario:', error);
+    }
+  };
+
+  const stats = [
+    { title: 'Total Users', value: 10, icon: <GroupIcon />, color: '#1976d2' },
+    { title: 'Active Users', value: 6, icon: <PersonIcon />, color: '#2e7d32' },
+    { title: 'New Today', value: 2, icon: <NewReleasesIcon />, color: '#ed6c02' },
+    { title: 'Administrators', value: 4, icon: <SupervisorAccountIcon />, color: '#d32f2f' }
+  ];
+
+  const columns = [
+    { field: 'id', headerName: 'ID', width: 90 },
+    { field: 'name', headerName: 'Name', width: 180 },
+    { field: 'username', headerName: 'Username', width: 130 },
+    { field: 'email', headerName: 'Email', width: 200 },
+    { field: 'phone', headerName: 'Phone', width: 130 },
+    {
+      field: 'role',
+      headerName: 'Role',
+      width: 120,
+      renderCell: (params) => (
+        <Chip
+          label={params.value}
+          color={params.value === 'Admin' ? 'primary' : 'default'}
+          size="small"
+        />
+      ),
+    },
+    {
+      field: 'status',
+      headerName: 'Status',
+      width: 120,
+      renderCell: (params) => (
+        <Chip
+          label={params.value}
+          color={params.value === 'Active' ? 'success' : 'default'}
+          size="small"
+        />
+      ),
+    },
+  ];
+
+  return (
+    <Box>
+      <Typography variant="h5" gutterBottom>User Management</Typography>
+      
+      {/* Statistics */}
+      <Box sx={{ display: 'flex', gap: 3, mb: 4 }}>
+        {stats.map((stat, index) => (
+          <Card key={index} sx={{ flex: 1, p: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <Box sx={{ 
+                backgroundColor: `${stat.color}15`,
+                borderRadius: '50%',
+                p: 1,
+                mr: 2,
+                display: 'flex'
+              }}>
+                {stat.icon}
+              </Box>
+              <Typography variant="h4">{stat.value}</Typography>
+            </Box>
+            <Typography color="textSecondary" variant="body2">{stat.title}</Typography>
+          </Card>
+        ))}
+      </Box>
+
+      {/* Users Table */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+        <Typography variant="h6">Users List</Typography>
+        <Box>
+          <Button variant="outlined" sx={{ mr: 1 }}>Filter</Button>
+          <Button variant="outlined" sx={{ mr: 1 }}>Export</Button>
+          <Button variant="contained" onClick={handleOpenModal}>+ Add User</Button>
+        </Box>
+      </Box>
+
+      <Box sx={{ height: 400, width: '100%' }}>
+        <DataGrid
+          rows={users}
+          columns={columns}
+          pageSize={5}
+          rowsPerPageOptions={[5, 10, 20]}
+          checkboxSelection
+          disableSelectionOnClick
+        />
+      </Box>
+
+      <Dialog 
+        open={openModal} 
+        onClose={handleCloseModal}
+        PaperProps={{
+          sx: { width: '500px' }
+        }}
+      >
+        <DialogTitle>Add New User</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              name="name"
+              label="Name"
+              fullWidth
+              value={newUser.name}
+              onChange={handleInputChange}
+            />
+            <TextField
+              name="username"
+              label="Username"
+              fullWidth
+              value={newUser.username}
+              onChange={handleInputChange}
+            />
+            <TextField
+              name="password"
+              label="Password"
+              type="password"
+              fullWidth
+              value={newUser.password}
+              onChange={handleInputChange}
+            />
+            <TextField
+              name="email"
+              label="Email"
+              type="email"
+              fullWidth
+              value={newUser.email}
+              onChange={handleInputChange}
+            />
+            <TextField
+              name="phone"
+              label="Phone"
+              fullWidth
+              value={newUser.phone}
+              onChange={handleInputChange}
+            />
+            <FormControl fullWidth>
+              <InputLabel>Role</InputLabel>
+              <Select
+                name="role"
+                value={newUser.role}
+                label="Role"
+                onChange={handleInputChange}
+              >
+                <MenuItem value="Admin">Admin</MenuItem>
+                <MenuItem value="Viewer">Viewer</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl fullWidth>
+              <InputLabel>Status</InputLabel>
+              <Select
+                name="status"
+                value={newUser.status}
+                label="Status"
+                onChange={handleInputChange}
+              >
+                <MenuItem value="Active">Active</MenuItem>
+                <MenuItem value="Inactive">Inactive</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseModal}>Cancel</Button>
+          <Button onClick={handleSubmit} variant="contained">Save</Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+}
+
 

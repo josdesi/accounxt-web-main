@@ -1,7 +1,8 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import authService from '../../services/authService';
+import { AUTH_TOKEN } from '../../constants/AuthConstant';
 
-const tokenFromStorage = localStorage.getItem('AUTH_TOKEN') || null;
+const tokenFromStorage = localStorage.getItem(AUTH_TOKEN) || null;
 
 const initialState = {
   token: tokenFromStorage,
@@ -12,7 +13,7 @@ const initialState = {
 export const login = createAsyncThunk('auth/login', async (credentials, { rejectWithValue }) => {
   try {
     const token = await authService.login(credentials);
-    localStorage.setItem('AUTH_TOKEN', token);
+    localStorage.setItem(AUTH_TOKEN, token);
     return token;
   } catch (err) {
     return rejectWithValue(err.message || 'Login failed');
@@ -24,7 +25,11 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     logout: (state) => {
-      localStorage.removeItem('AUTH_TOKEN');
+      localStorage.removeItem(AUTH_TOKEN);
+      state.token = null;
+    },
+    signOutSuccess: (state) => {
+      state.loading = false;
       state.token = null;
     }
   },
@@ -45,5 +50,5 @@ const authSlice = createSlice({
   }
 });
 
-export const { logout } = authSlice.actions;
+export const { logout, signOutSuccess } = authSlice.actions;
 export default authSlice.reducer;
