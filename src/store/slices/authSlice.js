@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import authService from '../../services/authService';
+import AuthService from '../../services/AuthService';
 import { AUTH_TOKEN } from '../../constants/AuthConstant';
 
 const tokenFromStorage = localStorage.getItem(AUTH_TOKEN) || null;
@@ -12,7 +12,7 @@ const initialState = {
 
 export const login = createAsyncThunk('auth/login', async (credentials, { rejectWithValue }) => {
   try {
-    const token = await authService.login(credentials);
+    const token = await AuthService.login(credentials);
     localStorage.setItem(AUTH_TOKEN, token);
     return token;
   } catch (err) {

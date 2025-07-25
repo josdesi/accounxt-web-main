@@ -1,8 +1,8 @@
 import fetch from '../auth/FetchInterceptor';
 
-const UserService = {}
+const UserService = {};
 
-UserService.create = function (data) {
+UserService.create = (data) => {
 	return fetch({
 		url: '/iam/users',
 		method: 'post',
